@@ -132,17 +132,6 @@ public class DeliciousBlockingDeque<T> {
         }
     }
 
-    private static void threadWait(Thread thread) {
-        try {
-            synchronized (thread) {
-                System.out.println("\n" + thread.getName() + "开始阻塞等待\n");
-                thread.wait();
-            }
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
