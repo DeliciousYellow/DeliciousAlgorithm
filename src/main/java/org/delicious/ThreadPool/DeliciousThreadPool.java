@@ -1,9 +1,6 @@
 package org.delicious.ThreadPool;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.Accessors;
 import org.delicious.BolckingDeque.DeliciousBlockingDeque;
 
@@ -11,39 +8,41 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 
 import static java.util.Optional.ofNullable;
 
-/**
- * @author huangcan
- * Date: 2025/4/27
- * Time: 19:19
- */
 public class DeliciousThreadPool {
 
-    private AtomicInteger currentThreadCount = new AtomicInteger(0);
     private int coreSize;
     private int maxSize;
-    private int dequeSize;
     private int waitTime;
     private TimeUnit timeUnit;
-    private final DeliciousBlockingDeque<MyTask> taskBlockingDeque;
+    private final AtomicInteger currentThreadCount = new AtomicInteger(0);
+    private final DeliciousBlockingDeque<DeliciousTask> taskBlockingDeque;
     private final ReentrantLock threadCreateLock;
-    private final Runnable rejectFunction;
 
-    public DeliciousThreadPool(int coreSize, int maxSize, int waitTime, TimeUnit timeUnit, int dequeSize, Runnable rejectFunction) {
+    private final BiFunction<DeliciousTask, DeliciousThreadPool, Void> rejectFunction;
+
+    private static final BiFunction<DeliciousTask, DeliciousThreadPool, Void> DEFAULT = (task, threadPool) -> {
+        throw new RuntimeException("线程池满了,当前队列元素" + threadPool.currentThreadCount.get() + "&&" + task.getTaskName() + "被抛弃");
+    };
+
+    public DeliciousThreadPool(int coreSize, int maxSize, int waitTime, TimeUnit timeUnit, int dequeSize) {
+        this(coreSize, maxSize, waitTime, timeUnit, dequeSize, DEFAULT);
+    }
+
+    public DeliciousThreadPool(int coreSize, int maxSize, int waitTime, TimeUnit timeUnit, int dequeSize, BiFunction<DeliciousTask, DeliciousThreadPool, Void> rejectFunction) {
         this.threadCreateLock = new ReentrantLock();
-
         this.coreSize = coreSize;
         this.maxSize = maxSize;
         this.waitTime = waitTime;
         this.timeUnit = timeUnit;
-        this.dequeSize = dequeSize;
         this.taskBlockingDeque = new DeliciousBlockingDeque<>(dequeSize);
         this.rejectFunction = rejectFunction;
     }
 
-    public void submitTask(MyTask commitTask) {
+    public void submitTask(DeliciousTask commitTask) {
         if (startThread(commitTask, true)) {
             System.out.println("核心线程创建成功");
             return;
@@ -55,16 +54,13 @@ public class DeliciousThreadPool {
             if (startThread(commitTask, false)) {
                 System.out.println("辅助线程创建成功");
             } else {
-                System.out.println("辅助线程创建失败");
-                if (Objects.isNull(rejectFunction)) {
-                    throw new RuntimeException("线程池满了,当前队列元素" + this.taskBlockingDeque.size() + "。" + commitTask.getTaskName() + "被抛弃");
-                }
-                rejectFunction.run();
+                System.out.println("辅助线程创建失败，执行拒绝策略");
+                rejectFunction.apply(commitTask, this);
             }
         }
     }
 
-    private boolean startThread(MyTask commitTask, boolean isCoreThread) {
+    private boolean startThread(DeliciousTask commitTask, boolean isCoreThread) {
         boolean successfullyCreate = false;
         int threadSize = isCoreThread ? coreSize : maxSize;
         if (currentThreadCount.get() < threadSize) {
@@ -90,7 +86,7 @@ public class DeliciousThreadPool {
     /**
      * 启动一个核心线程
      */
-    private void startCoreThread(MyTask firstTask) {
+    private void startCoreThread(DeliciousTask firstTask) {
         Thread thread = new Thread(() -> {
             if (Objects.nonNull(firstTask)) {
                 //线程启动时,无需入队，直接运行提交的任务
@@ -98,8 +94,8 @@ public class DeliciousThreadPool {
                 firstTask.getRunnable().run();
             }
             while (true) {
-                MyTask myTask = taskBlockingDeque.poll();
-                ofNullable(myTask).ifPresent(task -> {
+                DeliciousTask deliciousTask = taskBlockingDeque.poll();
+                ofNullable(deliciousTask).ifPresent(task -> {
                     System.out.println("核心线程获取到" + task.getTaskName());
                     task.getRunnable().run();
                 });
@@ -113,7 +109,7 @@ public class DeliciousThreadPool {
     /**
      * 启动一个辅助线程
      */
-    private void startAssistThread(MyTask firstTask) {
+    private void startAssistThread(DeliciousTask firstTask) {
         Thread thread = new Thread(() -> {
             if (Objects.nonNull(firstTask)) {
                 //线程启动时,无需入队，直接运行提交的任务
@@ -121,7 +117,7 @@ public class DeliciousThreadPool {
                 firstTask.getRunnable().run();
             }
             while (true) {
-                MyTask task;
+                DeliciousTask task;
                 long startTime = System.currentTimeMillis();
                 try {
                     task = taskBlockingDeque.poll(this.waitTime, this.timeUnit);
@@ -144,12 +140,19 @@ public class DeliciousThreadPool {
         thread.start();
     }
 
+    public void updateThreadPoolConfig(int coreSize, int maxSize, int waitTime, TimeUnit timeUnit) {
+        this.coreSize = coreSize;
+        this.maxSize = maxSize;
+        this.waitTime = waitTime;
+        this.timeUnit = timeUnit;
+    }
+
     @Data
     @Builder
     @Accessors(chain = true)
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class MyTask {
+    public static class DeliciousTask {
         private Runnable runnable;
         private String taskName;
     }

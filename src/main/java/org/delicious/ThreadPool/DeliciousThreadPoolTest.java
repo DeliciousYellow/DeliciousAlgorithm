@@ -34,11 +34,15 @@ public class DeliciousThreadPoolTest {
             }
         }*/
 
-        DeliciousThreadPool deliciousThreadPool = new DeliciousThreadPool(2, 3, 1000, TimeUnit.MILLISECONDS, 3, () -> System.out.println("自定义行为"));
+        DeliciousThreadPool deliciousThreadPool = new DeliciousThreadPool(2, 3, 1000, TimeUnit.MILLISECONDS, 3,
+                (commitTask, currentThreadPool) -> {
+                    System.out.println("自定义行为,打印一个任务名称" + commitTask.getTaskName());
+                    return null;
+                });
         for (int i = 0; i < taskNameArray.length; i++) {
             try {
                 String taskName = taskNameArray[i];
-                deliciousThreadPool.submitTask(DeliciousThreadPool.MyTask.builder()
+                deliciousThreadPool.submitTask(DeliciousThreadPool.DeliciousTask.builder()
                         .taskName(taskName + "任务")
                         .runnable(() -> {
                             for (int j = 0; j < 50; j++) {
