@@ -1,6 +1,7 @@
 package org.delicious.BolckingDeque;
 
 import java.util.Scanner;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
 import static org.delicious.util.SleepUtil.sleep;
@@ -20,6 +21,9 @@ public class DeliciousBlockDequeTest {
     public static final String BLUE = "\u001B[34m";
 
     public static void main(String[] args) {
+        LinkedBlockingDeque<String> blockingDeque = new LinkedBlockingDeque<>();
+        blockingDeque.offer("A");
+        blockingDeque.poll();
         /*DeliciousBlockingDeque<String> blockingDeque = new DeliciousBlockingDeque<>(5);
         System.out.println(blockingDeque.size());
         System.out.println(blockingDeque.offer("A"));

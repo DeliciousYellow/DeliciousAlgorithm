@@ -25,9 +25,10 @@ public class DeliciousBlockingDeque<T> {
     private AtomicInteger currentNodeCount;
     private AtomicInteger maxNodeCount;
 
-    private List<Thread> pollThreads = new ArrayList<>();
+    private List<Thread> pollWaitThreads = new ArrayList<>();
+    private ReentrantLock pollWaitThreadsLock = new ReentrantLock();
 
-    private ReentrantLock offerLock = new ReentrantLock();
+    private ReentrantLock offerAndPollLock = new ReentrantLock();
 
     public DeliciousBlockingDeque(int maxNodeCount) {
         this.maxNodeCount = new AtomicInteger(maxNodeCount);
@@ -49,7 +50,7 @@ public class DeliciousBlockingDeque<T> {
     public boolean offer(T data) {
         if (size() < maxNodeCount.get()) {
             try {
-                offerLock.lock();
+                offerAndPollLock.lock();
                 if (size() < maxNodeCount.get()) {
                     Node<T> currentNode = Node.<T>builder().data(data).build();
                     endNode.pre.next = currentNode;
@@ -59,19 +60,24 @@ public class DeliciousBlockingDeque<T> {
 
                     this.currentNodeCount.incrementAndGet();
 
-                    this.pollThreads.stream()
-                            .findFirst()
-                            .ifPresent(needAwakeThread -> {
-                                synchronized (needAwakeThread) {
-                                    needAwakeThread.notify();
+                    try {
+                        pollWaitThreadsLock.lock();
+                        this.pollWaitThreads.stream()
+                                .findFirst()
+                                .ifPresent(needAwakeThread -> {
+                                    synchronized (needAwakeThread) {
+                                        needAwakeThread.notify();
+                                    }
                                     System.out.println(Thread.currentThread().getName() + "已唤醒" + needAwakeThread.getName());
-                                    this.pollThreads.remove(needAwakeThread);
-                                }
-                            });
+                                    this.pollWaitThreads.remove(needAwakeThread);
+                                });
+                    } finally {
+                        pollWaitThreadsLock.unlock();
+                    }
                     return true;
                 }
             } finally {
-                offerLock.unlock();
+                offerAndPollLock.unlock();
             }
         }
         return false;
@@ -91,7 +97,8 @@ public class DeliciousBlockingDeque<T> {
         time = timeUnit.toMillis(time);
         while (true) {
             if (size() > 0) {
-                synchronized (this) {
+                try {
+                    offerAndPollLock.lock();
                     if (size() > 0) {
                         Node<T> currentNode = this.headNode.next;
                         currentNode.next.pre = headNode;
@@ -99,11 +106,16 @@ public class DeliciousBlockingDeque<T> {
                         this.currentNodeCount.decrementAndGet();
                         return currentNode.data;
                     }
+                } finally {
+                    offerAndPollLock.unlock();
                 }
             } else {
                 Thread currentThread = Thread.currentThread();
-                synchronized (this) {
-                    pollThreads.add(currentThread);
+                try {
+                    pollWaitThreadsLock.lock();
+                    pollWaitThreads.add(currentThread);
+                } finally {
+                    pollWaitThreadsLock.unlock();
                 }
                 if (threadWait(currentThread, time)) {
                     //如果是超时唤醒，返回null
@@ -115,17 +127,17 @@ public class DeliciousBlockingDeque<T> {
 
     private static boolean threadWait(Thread thread, long time) {
         try {
+            System.out.println("\n" + thread.getName() + "开始阻塞等待\n");
+            long startWaitTime = System.currentTimeMillis();
             synchronized (thread) {
-                System.out.println("\n" + thread.getName() + "开始阻塞等待\n");
-                long startWaitTime = System.currentTimeMillis();
                 thread.wait(time);
-                if (time > 0 && System.currentTimeMillis() - startWaitTime >= time) {
-                    System.out.println("\n" + thread.getName() + "阻塞达最大时长\n");
-                    return true;
-                } else {
-                    System.out.println("\n" + thread.getName() + "被唤醒\n");
-                    return false;
-                }
+            }
+            if (time > 0 && System.currentTimeMillis() - startWaitTime >= time) {
+                System.out.println("\n" + thread.getName() + "阻塞达最大时长\n");
+                return true;
+            } else {
+                System.out.println("\n" + thread.getName() + "被唤醒\n");
+                return false;
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
