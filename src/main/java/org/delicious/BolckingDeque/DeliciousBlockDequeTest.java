@@ -1,7 +1,6 @@
 package org.delicious.BolckingDeque;
 
 import java.util.Scanner;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
 import static org.delicious.util.SleepUtil.sleep;
@@ -21,31 +20,29 @@ public class DeliciousBlockDequeTest {
     public static final String BLUE = "\u001B[34m";
 
     public static void main(String[] args) {
-        LinkedBlockingDeque<String> blockingDeque = new LinkedBlockingDeque<>();
-        blockingDeque.offer("A");
-        blockingDeque.poll();
-        /*DeliciousBlockingDeque<String> blockingDeque = new DeliciousBlockingDeque<>(5);
-        System.out.println(blockingDeque.size());
-        System.out.println(blockingDeque.offer("A"));
-        System.out.println(blockingDeque.offer("B"));
-        System.out.println(blockingDeque.offer("C"));
-        System.out.println(blockingDeque.poll());
-        System.out.println(blockingDeque.size());
-        System.out.println(blockingDeque.offer("D"));
-        System.out.println(blockingDeque.offer("E"));
-        System.out.println(blockingDeque.offer("F"));
-        System.out.println(blockingDeque.offer("G"));
-        System.out.println(blockingDeque.size());
-        System.out.println(blockingDeque);
-        for (int i = 0; i < 5; i++) {
-            blockingDeque.poll();
-        }
-        System.out.println(blockingDeque.poll());*/
-        System.out.println("=============================================");
-
         DeliciousBlockingDeque<String> parallelBlockingDeque = new DeliciousBlockingDeque<>(100);
-        String[] letter = new String[]{"A", "B", "C"};//, "D", "E", "F", "G", "H", "I", "J"};
-        String[] number = new String[]{"1", "2", "3"};//, "4", "5", "6", "7", "8", "9", "10"};
+        initBlockingDeque(parallelBlockingDeque);
+        sleep(2000);
+
+        startConsumer("[自动消费者线程1]", 4000, RED, parallelBlockingDeque);
+        startConsumer("[自动消费者线程2]", 8000, BLUE, parallelBlockingDeque);
+        /*startProducer("[自动生产者线程]", 5000, YELLOW, parallelBlockingDeque);*/
+
+        Thread inputThread = new Thread(() -> {
+            while (true) {
+                Scanner scanner = new Scanner(System.in);
+                parallelBlockingDeque.offer(scanner.next());
+            }
+        });
+        inputThread.setName("[手动生产线程]");
+        inputThread.start();
+    }
+
+    private static void initBlockingDeque(DeliciousBlockingDeque<String> parallelBlockingDeque) {
+        //, "D", "E", "F", "G", "H", "I", "J"};
+        String[] letter = new String[]{"A", "B", "C"};
+        //, "4", "5", "6", "7", "8", "9", "10"};
+        String[] number = new String[]{"1", "2", "3"};
         Thread producer1 = new Thread(() -> {
             for (String s : letter) {
                 sleep(20);
@@ -66,58 +63,39 @@ public class DeliciousBlockDequeTest {
         });
         producer2.setName("[生产者2]");
         producer2.start();
+    }
 
-        sleep(2000);
-
+    private static void startConsumer(String consumerName, long sleepTime, String printColor, DeliciousBlockingDeque<String> parallelBlockingDeque) {
         Thread consumerThread1 = new Thread(() -> {
             while (true) {
                 long startTime = System.currentTimeMillis();
                 String poll = parallelBlockingDeque.poll(0, TimeUnit.MILLISECONDS);
-                System.out.println("\n" + RED + Thread.currentThread().getName() + "取到元素「" + poll + "」耗时 " + (System.currentTimeMillis() - startTime)
+                System.out.println("\n" + printColor + Thread.currentThread().getName() + "取到元素「" + poll + "」耗时 " + (System.currentTimeMillis() - startTime)
                         + " ==队列剩余「" + parallelBlockingDeque + "」==" + RESET + "\n");
-                sleep(4000);
+                sleep(sleepTime);
             }
         });
-        consumerThread1.setName("[自动消费者线程1]");
+        consumerThread1.setName(consumerName);
         consumerThread1.start();
+    }
 
-        Thread consumerThread2 = new Thread(() -> {
-            while (true) {
-                long startTime = System.currentTimeMillis();
-                String poll = parallelBlockingDeque.poll(20000, TimeUnit.MILLISECONDS);
-                System.out.println("\n" + BLUE + Thread.currentThread().getName() + "取到元素「" + poll + "」耗时 " + (System.currentTimeMillis() - startTime)
-                        + " ==队列剩余「" + parallelBlockingDeque + "」==" + RESET + "\n");
-                sleep(8000);
-            }
-        });
-        consumerThread2.setName("[自动消费者线程2]");
-        consumerThread2.start();
 
-        /*Thread producer3 = new Thread(() -> {
+    private static void startProducer(String consumerName, long sleepTime, String printColor, DeliciousBlockingDeque<String> parallelBlockingDeque) {
+        Thread producer3 = new Thread(() -> {
             int i = 0;
             while (true) {
                 if (i > 10000) {
                     i = 0;
                 }
-                sleep(5000);
+                sleep(sleepTime);
                 parallelBlockingDeque.offer(String.valueOf(i++));
                 System.out.println();
-                System.out.println(Thread.currentThread().getName() + "添加元素" + "==队列剩余「" + parallelBlockingDeque + "」==");
+                System.out.println("\n" + printColor + Thread.currentThread().getName() + "添加元素"
+                        + "==队列剩余「" + parallelBlockingDeque + "」==" + RESET + "\n");
                 System.out.println();
             }
         });
-        producer3.setName("[自动生产者线程]");
-        producer3.start();*/
-
-        Thread inputThread = new Thread(() -> {
-            while (true) {
-                Scanner scanner = new Scanner(System.in);
-                boolean offer = parallelBlockingDeque.offer(scanner.next());
-            }
-        });
-        inputThread.setName("[手动生产线程]");
-        inputThread.start();
-
+        producer3.setName(consumerName);
+        producer3.start();
     }
-
 }

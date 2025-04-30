@@ -6,7 +6,7 @@ package org.delicious.util;
  * Time: 15:10
  */
 public class SleepUtil {
-    public static void sleep(int time) {
+    public static void sleep(long time) {
         try {
             Thread.sleep(time);
         } catch (InterruptedException e) {
