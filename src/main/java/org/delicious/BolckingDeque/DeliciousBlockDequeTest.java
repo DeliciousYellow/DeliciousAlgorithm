@@ -25,7 +25,7 @@ public class DeliciousBlockDequeTest {
         sleep(2000);
 
         startConsumer("[自动消费者线程1]", 5000, 4000, RED, parallelBlockingDeque);
-        startConsumer("[自动消费者线程2]", -1, 8000, BLUE, parallelBlockingDeque);
+        startConsumer("[自动消费者线程2]", 0, 8000, BLUE, parallelBlockingDeque);
         /*startProducer("[自动生产者线程]", 5000, YELLOW, parallelBlockingDeque);*/
 
         Thread inputThread = new Thread(() -> {
