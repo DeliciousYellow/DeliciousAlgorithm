@@ -24,8 +24,8 @@ public class DeliciousBlockDequeTest {
         initBlockingDeque(parallelBlockingDeque);
         sleep(2000);
 
-        startConsumer("[自动消费者线程1]", 4000, RED, parallelBlockingDeque);
-        startConsumer("[自动消费者线程2]", 8000, BLUE, parallelBlockingDeque);
+        startConsumer("[自动消费者线程1]", 5000, 4000, RED, parallelBlockingDeque);
+        startConsumer("[自动消费者线程2]", -1, 8000, BLUE, parallelBlockingDeque);
         /*startProducer("[自动生产者线程]", 5000, YELLOW, parallelBlockingDeque);*/
 
         Thread inputThread = new Thread(() -> {
@@ -65,11 +65,11 @@ public class DeliciousBlockDequeTest {
         producer2.start();
     }
 
-    private static void startConsumer(String consumerName, long sleepTime, String printColor, DeliciousBlockingDeque<String> parallelBlockingDeque) {
+    private static void startConsumer(String consumerName, long waitTime, long sleepTime, String printColor, DeliciousBlockingDeque<String> parallelBlockingDeque) {
         Thread consumerThread1 = new Thread(() -> {
             while (true) {
                 long startTime = System.currentTimeMillis();
-                String poll = parallelBlockingDeque.poll(0, TimeUnit.MILLISECONDS);
+                String poll = parallelBlockingDeque.poll(waitTime, TimeUnit.MILLISECONDS);
                 System.out.println("\n" + printColor + Thread.currentThread().getName() + "取到元素「" + poll + "」耗时 " + (System.currentTimeMillis() - startTime)
                         + " ==队列剩余「" + parallelBlockingDeque + "」==" + RESET + "\n");
                 sleep(sleepTime);
