@@ -20,15 +20,14 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class DeliciousBlockingDeque<T> {
 
-    private Node<T> headNode;
-    private Node<T> endNode;
-    private AtomicInteger currentNodeCount;
-    private AtomicInteger maxNodeCount;
+    private final Node<T> headNode;
+    private final Node<T> endNode; 
+    private final AtomicInteger currentNodeCount;
+    private final AtomicInteger maxNodeCount;
 
-    private List<Thread> pollWaitThreads = new ArrayList<>();
-    private ReentrantLock pollWaitThreadsLock = new ReentrantLock();
-
-    private ReentrantLock offerAndPollLock = new ReentrantLock();
+    private final List<Thread> pollWaitThreads = new ArrayList<>();
+    private final ReentrantLock pollWaitThreadsLock = new ReentrantLock();
+    private final ReentrantLock offerAndPollLock = new ReentrantLock();
 
     public DeliciousBlockingDeque(int maxNodeCount) {
         this.maxNodeCount = new AtomicInteger(maxNodeCount);
@@ -65,11 +64,12 @@ public class DeliciousBlockingDeque<T> {
                         this.pollWaitThreads.stream()
                                 .findFirst()
                                 .ifPresent(needAwakeThread -> {
+                                    //FIXME 这队列里元素越来越多
+                                    this.pollWaitThreads.remove(needAwakeThread);
                                     synchronized (needAwakeThread) {
                                         needAwakeThread.notify();
                                     }
                                     System.out.println(Thread.currentThread().getName() + "已唤醒" + needAwakeThread.getName());
-                                    this.pollWaitThreads.remove(needAwakeThread);
                                 });
                     } finally {
                         pollWaitThreadsLock.unlock();
