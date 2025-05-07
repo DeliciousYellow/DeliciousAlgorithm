@@ -1,4 +1,4 @@
-package org.delicious.controller;
+package org.delicious.spring.controller;
 
 import org.delicious.spring.annotation.DeliciousRequestBody;
 import org.springframework.web.bind.annotation.PostMapping;

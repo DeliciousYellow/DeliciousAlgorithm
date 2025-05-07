@@ -1,4 +1,4 @@
-package org.delicious.BolckingDeque;
+package org.delicious.bolckingDeque;
 
 
 import lombok.AllArgsConstructor;

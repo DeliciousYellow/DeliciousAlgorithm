@@ -1,8 +1,8 @@
-package org.delicious.ThreadPool;
+package org.delicious.threadPool;
 
 import lombok.*;
 import lombok.experimental.Accessors;
-import org.delicious.BolckingDeque.DeliciousBlockingDeque;
+import org.delicious.bolckingDeque.DeliciousBlockingDeque;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;

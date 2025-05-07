@@ -1,4 +1,4 @@
-package org.delicious.ThreadPool;
+package org.delicious.threadPool;
 
 import java.util.concurrent.TimeUnit;
 
